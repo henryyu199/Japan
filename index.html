@@ -3,155 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日本自駕行程地圖 (免費開源版)</title>
+    <title>2026 北海道自駕全圖</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&family=Noto+Sans+HK:wght@400;700&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
     <style>
-        body, html {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            font-family: 'Nunito', 'Noto Sans HK', sans-serif;
-        }
-
-        #map {
-            height: 100%;
-            width: 100%;
-            z-index: 1; /* 確保地圖喺底 */
-        }
-
-        /* 左上角嘅行程選擇選單 (暖色調風格) */
+        body, html { height: 100%; margin: 0; padding: 0; font-family: 'Nunito', 'Noto Sans HK', sans-serif; }
+        #map { height: 100%; width: 100%; z-index: 1; }
+        
         #menu-panel {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background-color: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            z-index: 5; /* 確保選單喺地圖上面 */
-            width: 250px;
-            border: 2px solid #FFDFBA; 
+            position: absolute; top: 15px; left: 15px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px; border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 5; width: 220px; max-height: 85vh; overflow-y: auto;
+            border: 2px solid #FFDFBA;
         }
 
-        #menu-panel h3 {
-            margin-top: 0;
-            color: #555;
-            text-align: center;
-        }
-
+        h3 { margin: 0 0 10px 0; color: #d35400; text-align: center; font-size: 1.1rem; }
+        
         .route-btn {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            background-color: #FFDFBA; 
-            color: #333;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-family: inherit;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            font-weight: bold;
+            display: block; width: 100%; padding: 8px 12px; margin-bottom: 6px;
+            background-color: #fff; color: #444; border: 1px solid #ddd;
+            border-radius: 8px; font-size: 13px; font-family: inherit;
+            cursor: pointer; transition: all 0.2s; text-align: left;
         }
 
-        .route-btn:hover { background-color: #FFFFBA; }
-        .route-btn.active { background-color: #BAE1FF; color: #000; }
+        .route-btn:hover { background-color: #f0f0f0; }
+        .route-btn.active { border-width: 2px; font-weight: bold; }
+        
+        .color-dot {
+            display: inline-block; width: 10px; height: 10px; 
+            border-radius: 50%; margin-right: 8px;
+        }
+
+        @media (max-width: 600px) {
+            #menu-panel { width: 160px; padding: 10px; left: 10px; }
+            .route-btn { font-size: 12px; padding: 6px; }
+        }
     </style>
 </head>
 <body>
 
-    <div id="menu-panel">
-        <h3>行程總覽</h3>
-        <button class="route-btn" onclick="loadRoute('day1', this)">05/09：機場 ➔ 白老町</button>
-        <button class="route-btn" onclick="loadRoute('day5', this)">05/13：洞爺湖 ➔ 札幌</button>
-        <button class="route-btn" onclick="loadRoute('day6', this)">05/14：札幌 ➔ 小樽</button>
-    </div>
+<div id="menu-panel">
+    <h3>8日行程全圖</h3>
+    <div id="buttons-container"></div>
+</div>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // 定義每日顏色
+    const dayColors = {
+        'd1': '#FF5733', // 橙紅
+        'd2': '#33FF57', // 螢光綠
+        'd3': '#3357FF', // 鮮藍
+        'd4': '#F333FF', // 紫色
+        'd5': '#FF33A8', // 粉紅
+        'd6': '#33FFF3', // 青色
+        'd7': '#FF8333', // 橙色
+        'd8': '#8D33FF'  // 深紫
+    };
 
-    <script>
-        let map;
-        let featureGroup = L.featureGroup(); // 用嚟裝載路線同地標嘅群組，方便一次過清空
+    const routesData = {
+        'd1': { label: "05/09 機場→白老", center: [42.67, 141.51], zoom: 10, points: [
+            { c: [42.796, 141.666], t: "新千歲機場" }, { c: [42.548, 141.354], t: "白老町民宿" }
+        ]},
+        'd2': { label: "05/10 白老深度遊", center: [42.55, 141.35], zoom: 14, points: [
+            { c: [42.560, 141.362], t: "Upopoy" }, { c: [42.565, 141.355], t: "波羅多湖" }, { c: [42.552, 141.350], t: "白老牛餐廳" }, { c: [42.541, 141.345], t: "白老溫泉" }
+        ]},
+        'd3': { label: "05/11 室蘭/登別", center: [42.45, 141.0], zoom: 10, points: [
+            { c: [42.302, 141.002], t: "地球岬" }, { c: [42.497, 141.147], t: "登別地獄谷" }, { c: [42.588, 140.858], t: "洞爺湖花火" }
+        ]},
+        'd4': { label: "05/12 壯瞥/洞爺", center: [42.55, 140.88], zoom: 12, points: [
+            { c: [42.504, 140.865], t: "有珠山/昭和新山" }, { c: [42.535, 140.915], t: "壯瞥公園" }, { c: [42.602, 140.803], t: "Lake Hill Farm" }
+        ]},
+        'd5': { label: "05/13 前往札幌", center: [42.85, 141.1], zoom: 10, points: [
+            { c: [42.588, 140.858], t: "洞爺湖" }, { c: [43.055, 141.307], t: "北海道神宮" }, { c: [43.054, 141.353], t: "薄野" }
+        ]},
+        'd6': { label: "05/14 小樽一日遊", center: [43.15, 141.15], zoom: 11, points: [
+            { c: [43.201, 140.994], t: "三角市場" }, { c: [43.194, 141.002], t: "小樽運河" }, { c: [43.176, 140.981], t: "天狗山夜景" }
+        ]},
+        'd7': { label: "05/15 札幌購物", center: [43.06, 141.35], zoom: 14, points: [
+            { c: [43.100, 141.272], t: "白色戀人公園" }, { c: [43.060, 141.350], t: "大通公園" }, { c: [43.056, 141.349], t: "狸小路" }
+        ]},
+        'd8': { label: "05/16 機場回程", center: [42.8, 141.7], zoom: 11, points: [
+            { c: [42.842, 141.724], t: "北國優駿公園" }, { c: [42.796, 141.666], t: "新千歲機場" }
+        ]}
+    };
 
-        // 行程資料 (Leaflet 座標格式係 [Lat, Lng])
-        const routesData = {
-            'day1': {
-                center: [42.6723, 141.5106],
-                zoom: 10,
-                points: [
-                    { coords: [42.7962, 141.6664], title: "新千歲機場" },
-                    { coords: [42.5484, 141.3548], title: "白老町" }
-                ]
-            },
-            'day5': {
-                center: [42.8275, 141.1034],
-                zoom: 10,
-                points: [
-                    { coords: [42.5933, 140.8524], title: "洞爺湖" },
-                    { coords: [43.0618, 141.3545], title: "札幌市" }
-                ]
-            },
-            'day6': {
-                center: [43.1262, 141.1784],
-                zoom: 11,
-                points: [
-                    { coords: [43.0618, 141.3545], title: "札幌市" },
-                    { coords: [43.1907, 141.0023], title: "小樽市" }
-                ]
-            }
-        };
+    let map = L.map('map', { zoomControl: false }).setView([42.8, 141.3], 8);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // 初始化地圖
-        map = L.map('map', { zoomControl: false }).setView([43.0618, 141.3545], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(map);
 
-        // 將 Zoom In/Out 掣移去右下角，免得同左上角選單重疊
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
+    // 初始化：畫出所有路線
+    Object.keys(routesData).forEach(dayId => {
+        const data = routesData[dayId];
+        const color = dayColors[dayId];
+        const pathCoords = [];
 
-        // 載入 OpenStreetMap 圖層
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        // 1. 加地標
+        data.points.forEach(p => {
+            L.circleMarker(p.c, {
+                radius: 6,
+                fillColor: color,
+                color: "#fff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).bindPopup(`<b>${data.label}</b><br>${p.t}`).addTo(map);
+            pathCoords.push(p.c);
+        });
+
+        // 2. 畫線 (實線)
+        L.polyline(pathCoords, {
+            color: color,
+            weight: 4,
+            opacity: 0.6
         }).addTo(map);
 
-        map.addLayer(featureGroup);
-
-        // 載入選擇嘅行程
-        function loadRoute(routeId, btnElement) {
-            // 更新按鈕顏色
-            document.querySelectorAll('.route-btn').forEach(btn => btn.classList.remove('active'));
-            btnElement.classList.add('active');
-
-            // 清空舊有嘅路線同地標
-            featureGroup.clearLayers();
-
-            const route = routesData[routeId];
-            const latlngs = []; // 收集所有座標用嚟畫線
-
-            // 飛去新嘅中心點
-            map.flyTo(route.center, route.zoom, { duration: 1.5 });
-
-            // 加入地標 (Markers) 並收集座標畫線
-            route.points.forEach((point, index) => {
-                latlngs.push(point.coords);
-                
-                // 加 Pin 並設定 Popup 顯示文字
-                L.marker(point.coords)
-                 .bindPopup(`<b>${point.title}</b>`) // 點擊 Pin 會彈出名字
-                 .addTo(featureGroup);
-            });
-
-            // 畫路線 (Polyline)
-            L.polyline(latlngs, {
-                color: '#FF8C00', // 溫暖橙色
-                weight: 5,
-                opacity: 0.8
-            }).addTo(featureGroup);
-        }
-    </script>
+        // 3. 動態產生按鈕
+        const btn = document.createElement('button');
+        btn.className = 'route-btn';
+        btn.innerHTML = `<span class="color-dot" style="background-color:${color}"></span>${data.label}`;
+        btn.onclick = () => {
+            document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            btn.style.borderColor = color;
+            map.flyTo(data.center, data.zoom, { duration: 1.5 });
+        };
+        document.getElementById('buttons-container').appendChild(btn);
+    });
+</script>
 </body>
 </html>
