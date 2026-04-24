@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本自駕行程地圖 (免費開源版)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&family=Noto+Sans+HK:wght@400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Nunito', 'Noto Sans HK', sans-serif;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1; /* 確保地圖喺底 */
+        }
+
+        /* 左上角嘅行程選擇選單 (暖色調風格) */
+        #menu-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 5; /* 確保選單喺地圖上面 */
+            width: 250px;
+            border: 2px solid #FFDFBA; 
+        }
+
+        #menu-panel h3 {
+            margin-top: 0;
+            color: #555;
+            text-align: center;
+        }
+
+        .route-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #FFDFBA; 
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+        }
+
+        .route-btn:hover { background-color: #FFFFBA; }
+        .route-btn.active { background-color: #BAE1FF; color: #000; }
+    </style>
+</head>
+<body>
+
+    <div id="menu-panel">
+        <h3>行程總覽</h3>
+        <button class="route-btn" onclick="loadRoute('day1', this)">05/09：機場 ➔ 白老町</button>
+        <button class="route-btn" onclick="loadRoute('day5', this)">05/13：洞爺湖 ➔ 札幌</button>
+        <button class="route-btn" onclick="loadRoute('day6', this)">05/14：札幌 ➔ 小樽</button>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        let map;
+        let featureGroup = L.featureGroup(); // 用嚟裝載路線同地標嘅群組，方便一次過清空
+
+        // 行程資料 (Leaflet 座標格式係 [Lat, Lng])
+        const routesData = {
+            'day1': {
+                center: [42.6723, 141.5106],
+                zoom: 10,
+                points: [
+                    { coords: [42.7962, 141.6664], title: "新千歲機場" },
+                    { coords: [42.5484, 141.3548], title: "白老町" }
+                ]
+            },
+            'day5': {
+                center: [42.8275, 141.1034],
+                zoom: 10,
+                points: [
+                    { coords: [42.5933, 140.8524], title: "洞爺湖" },
+                    { coords: [43.0618, 141.3545], title: "札幌市" }
+                ]
+            },
+            'day6': {
+                center: [43.1262, 141.1784],
+                zoom: 11,
+                points: [
+                    { coords: [43.0618, 141.3545], title: "札幌市" },
+                    { coords: [43.1907, 141.0023], title: "小樽市" }
+                ]
+            }
+        };
+
+        // 初始化地圖
+        map = L.map('map', { zoomControl: false }).setView([43.0618, 141.3545], 8);
+
+        // 將 Zoom In/Out 掣移去右下角，免得同左上角選單重疊
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // 載入 OpenStreetMap 圖層
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        map.addLayer(featureGroup);
+
+        // 載入選擇嘅行程
+        function loadRoute(routeId, btnElement) {
+            // 更新按鈕顏色
+            document.querySelectorAll('.route-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+
+            // 清空舊有嘅路線同地標
+            featureGroup.clearLayers();
+
+            const route = routesData[routeId];
+            const latlngs = []; // 收集所有座標用嚟畫線
+
+            // 飛去新嘅中心點
+            map.flyTo(route.center, route.zoom, { duration: 1.5 });
+
+            // 加入地標 (Markers) 並收集座標畫線
+            route.points.forEach((point, index) => {
+                latlngs.push(point.coords);
+                
+                // 加 Pin 並設定 Popup 顯示文字
+                L.marker(point.coords)
+                 .bindPopup(`<b>${point.title}</b>`) // 點擊 Pin 會彈出名字
+                 .addTo(featureGroup);
+            });
+
+            // 畫路線 (Polyline)
+            L.polyline(latlngs, {
+                color: '#FF8C00', // 溫暖橙色
+                weight: 5,
+                opacity: 0.8
+            }).addTo(featureGroup);
+        }
+    </script>
+</body>
+</html>
